@@ -20,18 +20,23 @@ fun main(args: Array<String>) {
 class Application {
 
     @Bean
-    fun initDb(userRepository: UserRepository, messageRepository: MessageRepository) =
-        ApplicationRunner {
-            val user1 = User(username = "jiri", password = "heslo", role = ADMIN)
-            val user2 = User(username = "jarda", password = "secret", role = USER)
+    fun initDb(
+        userRepository: UserRepository,
+        messageRepository: MessageRepository,
+        passwordEncoder: PasswordEncoder
+    ) = ApplicationRunner {
+        val user1 = User(username = "jiri", password = "heslo", role = ADMIN)
+        val user2 = User(username = "jarda", password = "secret", role = USER)
 
-            userRepository.saveAll(listOf(user1, user2))
+        val usersWithEncodedPasswords = listOf(user1, user2)
+            .map { it.copy(password = passwordEncoder.encode(it.password)) }
+        userRepository.saveAll(usersWithEncodedPasswords)
 
-            messageRepository.saveAll(listOf(
-                Message(text = "hello world", author = user1.username),
-                Message(text = "this is a test", author = user2.username)
-            ))
-        }
+        messageRepository.saveAll(listOf(
+            Message(text = "hello world", author = user1.username),
+            Message(text = "this is a test", author = user2.username)
+        ))
+    }
 }
 
 @EnableWebSecurity
@@ -62,7 +67,6 @@ class SecurityConfig(val userRepository: UserRepository) : WebSecurityConfigurer
         org.springframework.security.core.userdetails.User
             .withUsername(user.username)
             .password(user.password)
-            .passwordEncoder(passwordEncoder()::encode)
             .roles(user.role.toString())
             .build()
     }
